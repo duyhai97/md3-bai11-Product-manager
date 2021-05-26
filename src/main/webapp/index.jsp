@@ -11,6 +11,9 @@
     <title>$Title$</title>
   </head>
   <body>
-  $END$
+  <h1>HEHE</h1>
+  <h2>
+    <a href="/products"> click vào đây </a>
+  </h2>
   </body>
 </html>

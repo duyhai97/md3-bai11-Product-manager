@@ -1,8 +1,10 @@
 package controller;
 
+import dao.Dao;
+import dao.IDao;
 import model.Product;
 import service.ProductService;
-import service.ProductServiceIml;
+//import service.ProductServiceIml;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
@@ -11,11 +13,12 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 
 @WebServlet(name = "ProductServlet", urlPatterns = "/products")
 public class ProductServlet extends HttpServlet {
-    private ProductService productService = new ProductServiceIml();
+    private IDao iDao = new Dao();
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String action = request.getParameter("action");
@@ -40,7 +43,7 @@ public class ProductServlet extends HttpServlet {
 
     private void showViewForm(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         int id  = Integer.parseInt(request.getParameter("id"));
-        Product product = this.productService.findByID(id);
+        Product product = this.iDao.findByID(id);
         RequestDispatcher dispatcher;
         if (product == null) dispatcher = request.getRequestDispatcher("error-404.jsp");
         else {
@@ -52,7 +55,7 @@ public class ProductServlet extends HttpServlet {
 
     private void showDeleteForm(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         int id = Integer.parseInt(request.getParameter("id"));
-        Product product = this.productService.findByID(id);
+        Product product = this.iDao.findByID(id);
         RequestDispatcher dispatcher;
         if (product == null) dispatcher = request.getRequestDispatcher("error-404.jsp");
         else {
@@ -64,7 +67,7 @@ public class ProductServlet extends HttpServlet {
 
     private void showEditForm(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         int id = Integer.parseInt(request.getParameter("id"));
-        Product product = this.productService.findByID(id);
+        Product product = this.iDao.findByID(id);
         RequestDispatcher requestDispatcher;
         if (product == null) requestDispatcher = request.getRequestDispatcher("error-404.jsp");
         else {
@@ -80,7 +83,7 @@ public class ProductServlet extends HttpServlet {
     }
 
     private void listProducts(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        List<Product> products = this.productService.findAll();
+        List<Product> products = this.iDao.findAll();
         request.setAttribute("products", products);
         RequestDispatcher dispatcher = request.getRequestDispatcher("products/list.jsp");
         dispatcher.forward(request,response);
@@ -92,10 +95,14 @@ public class ProductServlet extends HttpServlet {
         if (action == null) action = "";
         switch (action){
             case "create":
-                crateProduct(request,response);
+                createProduct(request,response);
                 break;
             case "edit":
-                editProduct(request,response);
+                try {
+                    editProduct(request,response);
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
                 break;
             case "delete":
                 deleteProduct(request,response);
@@ -108,42 +115,40 @@ public class ProductServlet extends HttpServlet {
 
     private void deleteProduct(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         int id = Integer.parseInt(request.getParameter("id"));
-        Product product = this.productService.findByID(id);
+        Product product = this.iDao.findByID(id);
         RequestDispatcher dispatcher;
         if (product == null) dispatcher = request.getRequestDispatcher("error-404.jsp");
         else {
-            this.productService.remote(id);
+            this.iDao.remote(id);
             dispatcher = request.getRequestDispatcher("products/delete.jsp");
         }
         request.setAttribute("message", "Successful product delete");
         dispatcher.forward(request,response);
     }
 
-    private void editProduct(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    private void editProduct(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException, SQLException {
         int id = Integer.parseInt(request.getParameter("id"));
         String name = request.getParameter("name");
         int price = Integer.parseInt(request.getParameter("price"));
         int quantity = Integer.parseInt(request.getParameter("quantity"));
-        Product product = this.productService.findByID(id);
+        Product product = new Product(id,name,price,quantity);
         RequestDispatcher dispatcher;
         if (product ==null) dispatcher = request.getRequestDispatcher("error-404.jsp");
         else {
-            product.setName(name);
-            product.setPrice(price);
-            product.setQuantity(quantity);
+            iDao.update(id,product);
             dispatcher = request.getRequestDispatcher("products/edit.jsp");
         }
         request.setAttribute("message","Successful product repair");
         dispatcher.forward(request,response);
     }
 
-    private void crateProduct(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    private void createProduct(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         int id = (int) (Math.random()*10000);
         String name = request.getParameter("name");
         int price =Integer.parseInt(request.getParameter("price"));
         int quantity = Integer.parseInt(request.getParameter("quantity"));
         Product product = new Product(id,name,price,quantity);
-        this.productService.save(product);
+        this.iDao.save(product);
         RequestDispatcher dispatcher =request.getRequestDispatcher("products/create.jsp");
         request.setAttribute("message","New successful product added");
         dispatcher.forward(request,response);
